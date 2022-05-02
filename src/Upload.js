@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { ProgressBar, Jumbotron, Form } from "react-bootstrap";
+import { ProgressBar, Form, Card, Container } from "react-bootstrap";
 import axios from "axios";
 
 const chunkSize = 1048576 * 100; //its 3MB, increase the number measure in mb
+const API_URL = 'http://localhost:89'
+
 
 function Upload() {
   const [showProgress, setShowProgress] = useState(false);
@@ -18,8 +20,34 @@ function Upload() {
     uploadedBytes: 0,
   });
 
+  const [fileName, setFileName] = useState("")
+
   const progressInstance = (
-    <ProgressBar animated now={progress} label={`${progress.toFixed(3)}%`} />
+    <>
+      {
+        progress < 100 
+        ? 
+        (
+          <h5 className="text-center">
+            Por favor no cierre la ventana mientras se sube su archivo ni tampoco actualize la ventana
+          </h5>
+        )
+        :
+        (
+          <h5 className="text-center">
+            Su archivo {fileName} ha sido subido correctamente
+          </h5>
+        )
+      }
+      <ProgressBar
+        variant={progress.toFixed(3) < 100 ? "primary" : "success"}
+        animated={progress.toFixed(3) < 100 ? true : false}
+        now={progress}
+        label={`${
+          progress.toFixed(3) < 100 ? progress.toFixed(3) + "%" : "Completado"
+        }`}
+      />
+    </>
   );
 
   useEffect(() => {
@@ -34,9 +62,9 @@ function Upload() {
     resetState();
     const file_obj = e.target.files[0];
     const fileId = `${file_obj.size}-${file_obj.lastModified}-${file_obj.name}`;
-
+    setFileName(file_obj.name);
     axios
-      .get("http://localhost:3002/upload/status", {
+      .get(`${API_URL}/upload/status`, {
         headers: {
           "x-file-name": fileId,
           "file-size": file_obj.size,
@@ -63,19 +91,14 @@ function Upload() {
   };
 
   const fileUpload = (totalChunksUploaded) => {
-    const {
-      totalChunks,
-      fileToUpload,
-      startChunk,
-      endChunk,
-      fileId,
-    } = fileState;
+    const { totalChunks, fileToUpload, startChunk, endChunk, fileId } =
+      fileState;
     if (totalChunksUploaded <= totalChunks) {
       var chunk = fileToUpload.slice(startChunk, endChunk);
       uploadChunk(chunk);
     } else {
       axios
-        .post("http://localhost:3002/upload/complete", {
+        .post(`${API_URL}/upload/complete`, {
           headers: {
             "x-file-name": fileId,
           },
@@ -95,7 +118,7 @@ function Upload() {
       uploadedBytes,
     } = fileState;
     axios
-      .post("http://localhost:3002/upload/files", chunk, {
+      .post(`${API_URL}/upload/files`, chunk, {
         headers: {
           "x-file-name": fileId,
           "Content-Range": `bytes ${startChunk}-${endChunk}/${fileSize}`,
@@ -114,6 +137,9 @@ function Upload() {
         });
         const prog = fileSize ? (uploadedBytes / fileSize) * 100 : 0.1;
         setProgress(prog);
+        if (prog === 100) {
+          resetFileInput();
+        }
       });
   };
 
@@ -130,21 +156,40 @@ function Upload() {
     });
   };
 
+  const resetFileInput = () => {
+    document.querySelector("#exampleFormControlFile1").value = "";
+  };
+
   return (
-    <Jumbotron>
-      <Form>
-        <Form.Group>
-          <Form.File
-            id="exampleFormControlFile1"
-            onChange={getFileContext}
-            label="Example file input"
-          />
-        </Form.Group>
-        <Form.Group style={{ display: showProgress ? "block" : "none" }}>
-          {progressInstance}
-        </Form.Group>
-      </Form>
-    </Jumbotron>
+    <Container
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100vh",
+      }}
+    >
+      <Card style={{ width: "50rem" }}>
+        <Card.Header className="text-center bg-dark text-white fw-bold">
+          Subida de Archivos
+        </Card.Header>
+        <Card.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Control
+                id="exampleFormControlFile1"
+                onChange={getFileContext}
+                type="file"
+                disabled={ progress > 0 && progress < 100 ? true : false}
+              />
+            </Form.Group>
+            <Form.Group style={{ display: showProgress ? "block" : "none" }}>
+              {progressInstance}
+            </Form.Group>
+          </Form>
+        </Card.Body>
+      </Card>
+    </Container>
   );
 }
 

@@ -2,20 +2,15 @@ const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const app = express();
-const port = 3002;
+const path = require('path');
+const port = 89;
 
 app.use(express.json());
 app.use(cors({ origin: "*" }));
+app.use(express.static(path.join(__dirname, '/build')));
 
 const dest = "uploads/";
 
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-});
-
-app.post("/", function (req, res) {
-  res.send("Got a POST request");
-});
 
 app.get("/upload/status", (req, res) => {
   const uniqueFileId = String(req.headers["x-file-name"]);
@@ -133,6 +128,10 @@ app.post("/upload/complete", (req, res) => {
   delete uploads[uniqueFileId];
 
   res.status(201).send({ status: "SUCCESSFULLY_UPLOADED" });
+});
+
+app.use('*',  (req, res) => {
+  res.sendFile(path.join(__dirname, '/build', 'index.html'));
 });
 
 app.listen(port, () => {
